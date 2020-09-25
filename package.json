@@ -4,7 +4,8 @@
   "description": "to act as backend , will take the input youtube live video and keywords for comments as input and output : Only those comments will be sent to frontend which contain the sent keywords as provided in the input.",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tsc": "tsc"
   },
   "repository": {
     "type": "git",
@@ -18,5 +19,8 @@
   "bugs": {
     "url": "https://github.com/kumarabhi021/utubecommentBackend/issues"
   },
-  "homepage": "https://github.com/kumarabhi021/utubecommentBackend#readme"
+  "homepage": "https://github.com/kumarabhi021/utubecommentBackend#readme",
+  "dependencies": {
+    "typescript": "^4.0.3"
+  }
 }
