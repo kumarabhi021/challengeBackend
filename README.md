@@ -7,7 +7,7 @@ if no keyword provided, the program will return all the values.
 1. clone the repository to your local system.
 2. In the Project Directory, Run the command : 
    npm install
-3. In the project Directory, add a ".env" file.
+3. In the project Directory, create a ".env" file.
 4. Edit the ".env" file with below information : 
    api_key=[provide the api_key as shared over Email]
 5. Save ".env" file.
