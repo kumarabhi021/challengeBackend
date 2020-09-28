@@ -10,6 +10,8 @@ if no keyword provided, the program will return all the values.
 3. In the project Directory, create a ".env" file.
 4. Edit the ".env" file with below information : 
    api_key=[provide the api_key as shared over Email]
+   example , for reference only : 
+   api_key=FSqbISpAhQazxswDfe4QSLP8QPIu42NH2kLuQ8
 5. Save ".env" file.
 6. To run the backend, run the below command in the project directory : 
    node server.js
