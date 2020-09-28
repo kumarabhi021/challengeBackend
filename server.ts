@@ -13,6 +13,8 @@ const io = socketio(server);
 
 const PORT = process.env.PORT || 8080;
 
+let countCommentSent = 0;
+
 const api_key: string = process.env.api_key || "";
 console.log(api_key);
 const part1: string[] = ["snippet"];
@@ -31,13 +33,13 @@ io.on("connection", (socket: object) => {
   socket.on("login", (logindata: object) => {
     console.log(logindata);
     access_token = logindata.token;
-    console.log(access_token);
+    console.log("access token received ");
   });
   socket.on("subscribe", (subscribedata: Object) => {
-    console.log(subscribedata);
+    console.log("data received from frontend : ",subscribedata);
     videoId = subscribedata.videoId;
     console.log("video id :", videoId);
-    getLiveChat(videoId, socket);
+    getLiveChat(videoId, socket, subscribedata.keywords);
   });
   socket.on("disconnect", () => {
     console.log("User left");
@@ -46,9 +48,10 @@ io.on("connection", (socket: object) => {
   });
 });
 
-const getLiveChat = (videoId: string, socket: object) => {
+const getLiveChat = (videoId: string, socket: object, keywords: string[]) => {
   // get the chat id
-  console.log("inside getLiveCHatid");
+  console.log("keywords : ", keywords);
+  console.log("inside getLiveCHatid function ");
   google
     .youtube("v3")
     .videos.list({
@@ -63,28 +66,49 @@ const getLiveChat = (videoId: string, socket: object) => {
         chatId = item.liveStreamingDetails?.activeLiveChatId || "";
         console.log("chat id : ", chatId);
         // extracting the live chat now.
-        google
-          .youtube("v3")
-          .liveChatMessages.list({
-            key: api_key,
-            liveChatId: chatId,
-            part: ["snippet", "authorDetails"],
-            access_token: access_token,
-          })
-          .then((response) => {
-            // console.log(response);
-            const { data } = response;
-            data.items?.forEach((item) => {
-              console.log(item.snippet?.displayMessage);
-              // console.log(item.authorDetails?.displayName);
-              socket.emit("commentsReady", {
-                data: item.snippet?.displayMessage,
+        setInterval(() => {
+          google
+            .youtube("v3")
+            .liveChatMessages.list({
+              key: api_key,
+              liveChatId: chatId,
+              part: ["snippet", "authorDetails"],
+              access_token: access_token,
+              maxResults: 1900,
+            })
+            .then((response) => {
+              console.log(response);
+              const { data } = response;
+              data.items?.forEach((item) => {
+                console.log(item.snippet?.displayMessage);
+                // console.log(item.authorDetails?.displayName);
+                keywords.forEach((keyword) => {
+                  console.log("keyword from foreach loop : ", keyword);
+                  if (item.snippet?.displayMessage?.includes(keyword)) {
+                    socket.emit("commentsReady", {
+                      data: item.snippet?.displayMessage,
+                    });
+                    countCommentSent++;
+                  }
+                });
+                if (keywords.length == 0) {
+                  console.log("keyword null");
+                  socket.emit("commentsReady", {
+                    data: item.snippet?.displayMessage,
+                  });
+                  countCommentSent++;
+                }
               });
+              if (countCommentSent == 0) {
+                socket.emit("commentsReady", {
+                  data: "** No comments matching your entry keyword found ! **",
+                });
+              }
+            })
+            .catch((err) => {
+              console.log(err);
             });
-          })
-          .catch((err) => {
-            console.log(err);
-          });
+        }, 5000;
       });
     })
     .catch((err) => {
@@ -92,46 +116,4 @@ const getLiveChat = (videoId: string, socket: object) => {
     });
 };
 
-/*
-// extracting the chat id for the live video
-google
-  .youtube("v3")
-  .videos.list({
-    key: api_key,
-    part: ["liveStreamingDetails"],
-    id: ["NMre6IAAAiU"],
-    access_token: access_token,
-  })
-  .then((response) => {
-    const { data } = response;
-    data.items?.forEach((item) => {
-      chatId = item.liveStreamingDetails?.activeLiveChatId || "";
-      console.log(chatId);
-      // extracting the live chat now.
-      google
-        .youtube("v3")
-        .liveChatMessages.list({
-          key: api_key,
-          liveChatId: chatId,
-          part: ["snippet", "authorDetails"],
-          access_token: access_token,
-        })
-        .then((response) => {
-          // console.log(response);
-          const { data } = response;
-          data.items?.forEach((item) => {
-            console.log(item.snippet?.displayMessage);
-            // console.log(item.authorDetails?.displayName);
-          });
-        })
-        .catch((err) => {
-          console.log(err);
-        });
-    });
-  })
-  .catch((err) => {
-    console.log(err);
-  });
-
-*/
 server.listen(PORT, () => console.log("server started on", PORT));

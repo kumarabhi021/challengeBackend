@@ -10,6 +10,7 @@ var app = express();
 var server = http.createServer(app);
 var io = socketio(server);
 var PORT = process.env.PORT || 8080;
+var countCommentSent = 0;
 var api_key = process.env.api_key || "";
 console.log(api_key);
 var part1 = ["snippet"];
@@ -25,13 +26,13 @@ io.on("connection", function (socket) {
     socket.on("login", function (logindata) {
         console.log(logindata);
         access_token = logindata.token;
-        console.log(access_token);
+        console.log("access token received ");
     });
     socket.on("subscribe", function (subscribedata) {
-        console.log(subscribedata);
+        console.log("data received from frontend : ", subscribedata);
         videoId = subscribedata.videoId;
         console.log("video id :", videoId);
-        getLiveChat(videoId, socket);
+        getLiveChat(videoId, socket, subscribedata.keywords);
     });
     socket.on("disconnect", function () {
         console.log("User left");
@@ -39,9 +40,10 @@ io.on("connection", function (socket) {
         videoId = "";
     });
 });
-var getLiveChat = function (videoId, socket) {
+var getLiveChat = function (videoId, socket, keywords) {
     // get the chat id
-    console.log("inside getLiveCHatid");
+    console.log("keywords : ", keywords);
+    console.log("inside getLiveCHatid function ");
     googleapis_1.google
         .youtube("v3")
         .videos.list({
@@ -58,76 +60,56 @@ var getLiveChat = function (videoId, socket) {
             chatId = ((_a = item.liveStreamingDetails) === null || _a === void 0 ? void 0 : _a.activeLiveChatId) || "";
             console.log("chat id : ", chatId);
             // extracting the live chat now.
-            googleapis_1.google
-                .youtube("v3")
-                .liveChatMessages.list({
-                key: api_key,
-                liveChatId: chatId,
-                part: ["snippet", "authorDetails"],
-                access_token: access_token,
-            })
-                .then(function (response) {
-                var _a;
-                // console.log(response);
-                var data = response.data;
-                (_a = data.items) === null || _a === void 0 ? void 0 : _a.forEach(function (item) {
-                    var _a, _b;
-                    console.log((_a = item.snippet) === null || _a === void 0 ? void 0 : _a.displayMessage);
-                    // console.log(item.authorDetails?.displayName);
-                    socket.emit("commentsReady", {
-                        data: (_b = item.snippet) === null || _b === void 0 ? void 0 : _b.displayMessage,
+            setInterval(function () {
+                googleapis_1.google
+                    .youtube("v3")
+                    .liveChatMessages.list({
+                    key: api_key,
+                    liveChatId: chatId,
+                    part: ["snippet", "authorDetails"],
+                    access_token: access_token,
+                    maxResults: 1900,
+                })
+                    .then(function (response) {
+                    var _a;
+                    console.log(response);
+                    var data = response.data;
+                    (_a = data.items) === null || _a === void 0 ? void 0 : _a.forEach(function (item) {
+                        var _a, _b;
+                        console.log((_a = item.snippet) === null || _a === void 0 ? void 0 : _a.displayMessage);
+                        // console.log(item.authorDetails?.displayName);
+                        keywords.forEach(function (keyword) {
+                            var _a, _b, _c;
+                            console.log("keyword from foreach loop : ", keyword);
+                            if ((_b = (_a = item.snippet) === null || _a === void 0 ? void 0 : _a.displayMessage) === null || _b === void 0 ? void 0 : _b.includes(keyword)) {
+                                socket.emit("commentsReady", {
+                                    data: (_c = item.snippet) === null || _c === void 0 ? void 0 : _c.displayMessage,
+                                });
+                                countCommentSent++;
+                            }
+                        });
+                        if (keywords.length == 0) {
+                            console.log("keyword null");
+                            socket.emit("commentsReady", {
+                                data: (_b = item.snippet) === null || _b === void 0 ? void 0 : _b.displayMessage,
+                            });
+                            countCommentSent++;
+                        }
                     });
+                    if (countCommentSent == 0) {
+                        socket.emit("commentsReady", {
+                            data: "** No comments matching your entry keyword found ! **",
+                        });
+                    }
+                })
+                    .catch(function (err) {
+                    console.log(err);
                 });
-            })
-                .catch(function (err) {
-                console.log(err);
-            });
+            }, 5000);
         });
     })
         .catch(function (err) {
         console.log("error occured in fetching the live chat id");
     });
 };
-/*
-// extracting the chat id for the live video
-google
-  .youtube("v3")
-  .videos.list({
-    key: api_key,
-    part: ["liveStreamingDetails"],
-    id: ["NMre6IAAAiU"],
-    access_token: access_token,
-  })
-  .then((response) => {
-    const { data } = response;
-    data.items?.forEach((item) => {
-      chatId = item.liveStreamingDetails?.activeLiveChatId || "";
-      console.log(chatId);
-      // extracting the live chat now.
-      google
-        .youtube("v3")
-        .liveChatMessages.list({
-          key: api_key,
-          liveChatId: chatId,
-          part: ["snippet", "authorDetails"],
-          access_token: access_token,
-        })
-        .then((response) => {
-          // console.log(response);
-          const { data } = response;
-          data.items?.forEach((item) => {
-            console.log(item.snippet?.displayMessage);
-            // console.log(item.authorDetails?.displayName);
-          });
-        })
-        .catch((err) => {
-          console.log(err);
-        });
-    });
-  })
-  .catch((err) => {
-    console.log(err);
-  });
-
-*/
 server.listen(PORT, function () { return console.log("server started on", PORT); });
