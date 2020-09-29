@@ -9,10 +9,11 @@ var http = require("http");
 var app = express();
 var server = http.createServer(app);
 var io = socketio(server);
+var interval;
+var nextPageToken = "";
 var PORT = process.env.PORT || 8080;
 var countCommentSent = 0;
 var api_key = process.env.api_key || "";
-console.log(api_key);
 var part1 = ["snippet"];
 var videoId = "NMre6IAAAiU";
 var chatId = "";
@@ -27,6 +28,7 @@ io.on("connection", function (socket) {
         console.log(logindata);
         access_token = logindata.token;
         console.log("access token received ");
+        clearInterval(interval);
     });
     socket.on("subscribe", function (subscribedata) {
         console.log("data received from frontend : ", subscribedata);
@@ -38,6 +40,11 @@ io.on("connection", function (socket) {
         console.log("User left");
         access_token = "";
         videoId = "";
+        clearInterval(interval);
+    });
+    socket.on("stopPolling", function (data) {
+        clearInterval(interval);
+        console.log("setinterval cleared ");
     });
 });
 var getLiveChat = function (videoId, socket, keywords) {
@@ -60,27 +67,30 @@ var getLiveChat = function (videoId, socket, keywords) {
             chatId = ((_a = item.liveStreamingDetails) === null || _a === void 0 ? void 0 : _a.activeLiveChatId) || "";
             console.log("chat id : ", chatId);
             // extracting the live chat now.
-            setInterval(function () {
+            interval = setInterval(function () {
                 googleapis_1.google
                     .youtube("v3")
                     .liveChatMessages.list({
                     key: api_key,
                     liveChatId: chatId,
-                    part: ["snippet", "authorDetails"],
+                    part: ["id", "snippet", "authorDetails"],
                     access_token: access_token,
                     maxResults: 1900,
+                    pageToken: nextPageToken,
                 })
                     .then(function (response) {
                     var _a;
-                    console.log(response);
+                    //console.log(response);
                     var data = response.data;
+                    nextPageToken = data.nextPageToken || "";
                     (_a = data.items) === null || _a === void 0 ? void 0 : _a.forEach(function (item) {
                         var _a, _b;
                         console.log((_a = item.snippet) === null || _a === void 0 ? void 0 : _a.displayMessage);
-                        // console.log(item.authorDetails?.displayName);
+                        //console.log(item.authorDetails?.displayName);
+                        // console.log(item.id);
                         keywords.forEach(function (keyword) {
                             var _a, _b, _c;
-                            console.log("keyword from foreach loop : ", keyword);
+                            //console.log("keyword from foreach loop : ", keyword);
                             if ((_b = (_a = item.snippet) === null || _a === void 0 ? void 0 : _a.displayMessage) === null || _b === void 0 ? void 0 : _b.includes(keyword)) {
                                 socket.emit("commentsReady", {
                                     data: (_c = item.snippet) === null || _c === void 0 ? void 0 : _c.displayMessage,

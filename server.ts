@@ -10,33 +10,36 @@ const http = require("http");
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
+let interval: any;
+let nextPageToken: string = "";
 
 const PORT = process.env.PORT || 8080;
 
 let countCommentSent = 0;
 
 const api_key: string = process.env.api_key || "";
-console.log(api_key);
+
 const part1: string[] = ["snippet"];
 
 let videoId: string = "NMre6IAAAiU";
 let chatId: string = "";
 let access_token: string = "";
 
-app.get("/", (request: object, response: object) => {
+app.get("/", (request: object, response: any) => {
   console.log("get received");
   response.send("hello world");
 });
 
-io.on("connection", (socket: object) => {
+io.on("connection", (socket: any) => {
   console.log("we have a new connection !");
-  socket.on("login", (logindata: object) => {
+  socket.on("login", (logindata: any) => {
     console.log(logindata);
     access_token = logindata.token;
     console.log("access token received ");
+    clearInterval(interval);
   });
-  socket.on("subscribe", (subscribedata: Object) => {
-    console.log("data received from frontend : ",subscribedata);
+  socket.on("subscribe", (subscribedata: any) => {
+    console.log("data received from frontend : ", subscribedata);
     videoId = subscribedata.videoId;
     console.log("video id :", videoId);
     getLiveChat(videoId, socket, subscribedata.keywords);
@@ -45,10 +48,15 @@ io.on("connection", (socket: object) => {
     console.log("User left");
     access_token = "";
     videoId = "";
+    clearInterval(interval);
+  });
+  socket.on("stopPolling", (data: any) => {
+    clearInterval(interval);
+    console.log("setinterval cleared ");
   });
 });
 
-const getLiveChat = (videoId: string, socket: object, keywords: string[]) => {
+const getLiveChat = (videoId: string, socket: any, keywords: string[]) => {
   // get the chat id
   console.log("keywords : ", keywords);
   console.log("inside getLiveCHatid function ");
@@ -66,24 +74,28 @@ const getLiveChat = (videoId: string, socket: object, keywords: string[]) => {
         chatId = item.liveStreamingDetails?.activeLiveChatId || "";
         console.log("chat id : ", chatId);
         // extracting the live chat now.
-        setInterval(() => {
+        interval = setInterval(() => {
           google
             .youtube("v3")
             .liveChatMessages.list({
               key: api_key,
               liveChatId: chatId,
-              part: ["snippet", "authorDetails"],
+              part: ["id", "snippet", "authorDetails"],
               access_token: access_token,
               maxResults: 1900,
+              pageToken: nextPageToken,
             })
             .then((response) => {
-              console.log(response);
+              //console.log(response);
               const { data } = response;
+              nextPageToken = data.nextPageToken || "";
               data.items?.forEach((item) => {
                 console.log(item.snippet?.displayMessage);
-                // console.log(item.authorDetails?.displayName);
+                //console.log(item.authorDetails?.displayName);
+                // console.log(item.id);
+
                 keywords.forEach((keyword) => {
-                  console.log("keyword from foreach loop : ", keyword);
+                  //console.log("keyword from foreach loop : ", keyword);
                   if (item.snippet?.displayMessage?.includes(keyword)) {
                     socket.emit("commentsReady", {
                       data: item.snippet?.displayMessage,
@@ -108,7 +120,7 @@ const getLiveChat = (videoId: string, socket: object, keywords: string[]) => {
             .catch((err) => {
               console.log(err);
             });
-        }, 5000;
+        }, 5000);
       });
     })
     .catch((err) => {
