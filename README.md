@@ -20,11 +20,14 @@ if no keyword provided, the program will return all the values.
 8. Go to Browser and hit "http://localhost:8080/"
    " hello world" should be displayed.
    this confimrs the server is up and running. 
+9. Data polling rate is set at 5000 milli secs.   
+
 
 # Pre-requisites :
 1. the .env file should have api_key mentioned.
 2. this program runs on 8080, make sure the 8080 port is free, or else you can se the port by providng the port number in the ".env" file, example : PORT = 5000 , to run it on port number 5000
 
 
-   
+# important points :
+1. data polling rate is @ 5000 milli secs. 
 
