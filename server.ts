@@ -12,6 +12,7 @@ const server = http.createServer(app);
 const io = socketio(server);
 let interval: any;
 let nextPageToken: string = "";
+let searchString = "";
 
 const PORT = process.env.PORT || 8080;
 
@@ -96,7 +97,13 @@ const getLiveChat = (videoId: string, socket: any, keywords: string[]) => {
 
                 keywords.forEach((keyword) => {
                   //console.log("keyword from foreach loop : ", keyword);
-                  if (item.snippet?.displayMessage?.includes(keyword)) {
+                  searchString = " " + keyword + " ";
+
+                  if (
+                    item.snippet?.displayMessage?.includes(searchString) ||
+                    item.snippet?.displayMessage?.startsWith(keyword) ||
+                    item.snippet?.displayMessage?.endsWith(keyword)
+                  ) {
                     socket.emit("commentsReady", {
                       data: item.snippet?.displayMessage,
                     });
@@ -120,7 +127,7 @@ const getLiveChat = (videoId: string, socket: any, keywords: string[]) => {
             .catch((err) => {
               console.log(err);
             });
-        }, 5000);
+        }, 10000);
       });
     })
     .catch((err) => {

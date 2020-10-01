@@ -11,6 +11,7 @@ var server = http.createServer(app);
 var io = socketio(server);
 var interval;
 var nextPageToken = "";
+var searchString = "";
 var PORT = process.env.PORT || 8080;
 var countCommentSent = 0;
 var api_key = process.env.api_key || "";
@@ -89,11 +90,12 @@ var getLiveChat = function (videoId, socket, keywords) {
                         //console.log(item.authorDetails?.displayName);
                         // console.log(item.id);
                         keywords.forEach(function (keyword) {
-                            var _a, _b, _c;
+                            var _a, _b, _c, _d, _e, _f, _g;
                             //console.log("keyword from foreach loop : ", keyword);
-                            if ((_b = (_a = item.snippet) === null || _a === void 0 ? void 0 : _a.displayMessage) === null || _b === void 0 ? void 0 : _b.includes(keyword)) {
+                            searchString = " " + keyword + " ";
+                            if (((_b = (_a = item.snippet) === null || _a === void 0 ? void 0 : _a.displayMessage) === null || _b === void 0 ? void 0 : _b.includes(searchString)) || ((_d = (_c = item.snippet) === null || _c === void 0 ? void 0 : _c.displayMessage) === null || _d === void 0 ? void 0 : _d.startsWith(keyword)) || ((_f = (_e = item.snippet) === null || _e === void 0 ? void 0 : _e.displayMessage) === null || _f === void 0 ? void 0 : _f.endsWith(keyword))) {
                                 socket.emit("commentsReady", {
-                                    data: (_c = item.snippet) === null || _c === void 0 ? void 0 : _c.displayMessage,
+                                    data: (_g = item.snippet) === null || _g === void 0 ? void 0 : _g.displayMessage,
                                 });
                                 countCommentSent++;
                             }
@@ -115,7 +117,7 @@ var getLiveChat = function (videoId, socket, keywords) {
                     .catch(function (err) {
                     console.log(err);
                 });
-            }, 5000);
+            }, 10000);
         });
     })
         .catch(function (err) {
